@@ -1,0 +1,17 @@
+{
+  "name": "Nourish Track Prototype",
+  "short_name": "Nourish",
+  "description": "食事写真、PFC、体重を記録する試作アプリ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8faf5",
+  "theme_color": "#1f9d7a",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
