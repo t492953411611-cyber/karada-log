@@ -1,6 +1,6 @@
 {
-  "name": "Nourish Track Prototype",
-  "short_name": "Nourish",
+  "name": "体ログ",
+  "short_name": "体ログ",
   "description": "食事写真、PFC、体重を記録する試作アプリ",
   "start_url": "./index.html",
   "display": "standalone",

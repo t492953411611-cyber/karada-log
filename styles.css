@@ -41,7 +41,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 20px clamp(18px, 4vw, 52px);
+  padding: calc(20px + env(safe-area-inset-top, 0px)) clamp(18px, 4vw, 52px) 20px;
   border-bottom: 1px solid rgba(220, 228, 223, 0.8);
   background: rgba(248, 250, 245, 0.88);
   backdrop-filter: blur(14px);
@@ -395,6 +395,40 @@ textarea:focus {
   text-align: center;
 }
 
+.nutrition-label-button {
+  margin-top: 12px;
+}
+
+.nutrition-label-status {
+  margin-top: 8px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.analysis-details {
+  display: block;
+  margin-top: 16px;
+}
+
+.analysis-details textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.analysis-details span {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
 .ghost-button,
 .primary-button {
   min-height: 46px;
@@ -402,6 +436,12 @@ textarea:focus {
   padding: 12px 16px;
   cursor: pointer;
   font-weight: 800;
+}
+
+.ghost-button:disabled,
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .ghost-button {
@@ -523,13 +563,18 @@ label textarea {
   font-weight: 800;
 }
 
-.icon-button {
-  width: 42px;
-  height: 42px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
-  cursor: pointer;
+.meal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.meal-form-actions {
+  margin-top: 16px;
+}
+
+.meal-form-actions .primary-button,
+.meal-form-actions .ghost-button {
+  margin-top: 0;
 }
 
 .inline-form {
@@ -636,6 +681,10 @@ label textarea {
     flex-direction: column;
   }
 
+  .tabs {
+    margin-top: 4px;
+  }
+
   .hero-grid,
   .two-col,
   .editor-layout {
@@ -651,7 +700,7 @@ label textarea {
   .app-header {
     position: static;
     gap: 12px;
-    padding: 14px 14px 6px;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 14px 6px;
   }
 
   .app-header h1 {
@@ -665,7 +714,7 @@ label textarea {
   .tabs {
     position: fixed;
     right: 10px;
-    bottom: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     left: 10px;
     z-index: 30;
     display: grid;
@@ -678,6 +727,7 @@ label textarea {
     background: rgba(255, 255, 255, 0.94);
     box-shadow: 0 10px 34px rgba(23, 33, 31, 0.18);
     backdrop-filter: blur(14px);
+    margin-top: 0;
   }
 
   .tab {
@@ -777,8 +827,16 @@ label textarea {
     height: 76px;
   }
 
-  .meal-card .icon-button {
+  .meal-actions {
     grid-column: 1 / -1;
+  }
+
+  .meal-actions .small-button {
+    flex: 1;
+  }
+
+  .meal-form-actions .primary-button,
+  .meal-form-actions .ghost-button {
     width: 100%;
   }
 

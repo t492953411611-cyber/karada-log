@@ -15,16 +15,9 @@ const defaultState = {
   weights: [],
 };
 
-const samples = [
-  { name: "鶏むね肉とご飯", calories: 620, protein: 42, fat: 12, carbs: 82 },
-  { name: "鮭定食", calories: 710, protein: 38, fat: 21, carbs: 88 },
-  { name: "卵とトースト", calories: 430, protein: 22, fat: 18, carbs: 46 },
-  { name: "パスタ", calories: 780, protein: 27, fat: 26, carbs: 104 },
-  { name: "サラダチキンボウル", calories: 520, protein: 45, fat: 14, carbs: 55 },
-];
-
 let state = loadState();
 let selectedPhoto = "";
+let nutritionLabelPhotos = [];
 let cloudClient = null;
 let cloudUser = null;
 let cloudReady = false;
@@ -33,6 +26,11 @@ const $ = (id) => document.getElementById(id);
 const today = () => new Date().toISOString().slice(0, 10);
 const number = (value) => Number(value) || 0;
 const rounded = (value) => Math.round(value);
+const formatDecimal = (value) =>
+  number(value).toLocaleString("ja-JP", {
+    maximumFractionDigits: 2,
+  });
+const formatGrams = formatDecimal;
 
 function loadState() {
   try {
@@ -337,10 +335,10 @@ function renderDashboard() {
 
   $("goalLabel").textContent = goalName();
   $("targetCaloriesLabel").textContent = `TDEE ${base} kcal / 目標 ${target} kcal`;
-  $("todayCalories").textContent = rounded(totals.calories);
-  $("todayProtein").textContent = rounded(totals.protein);
-  $("todayFat").textContent = rounded(totals.fat);
-  $("todayCarbs").textContent = rounded(totals.carbs);
+  $("todayCalories").textContent = formatDecimal(totals.calories);
+  $("todayProtein").textContent = formatGrams(totals.protein);
+  $("todayFat").textContent = formatGrams(totals.fat);
+  $("todayCarbs").textContent = formatGrams(totals.carbs);
   $("targetCaloriesSmall").textContent = `目標 ${macros.calories} kcal`;
   $("targetProteinSmall").textContent = `目標 ${macros.protein} g`;
   $("targetFatSmall").textContent = `目標 ${macros.fat} g`;
@@ -364,7 +362,7 @@ function renderDashboard() {
 
 function setBar(name, current, target) {
   const percent = target ? Math.round((current / target) * 100) : 0;
-  $(`${name}Percent`).textContent = `${rounded(current)} / ${target}g`;
+  $(`${name}Percent`).textContent = `${formatGrams(current)} / ${target}g`;
   $(`${name}Bar`).style.width = `${Math.min(100, percent)}%`;
 }
 
@@ -397,13 +395,16 @@ function renderMeals() {
           <h3>${escapeHtml(meal.name)}</h3>
           <p class="meal-meta">${meal.date} / ${escapeHtml(meal.type)}${meal.note ? ` / ${escapeHtml(meal.note)}` : ""}</p>
           <div class="meal-nutrients">
-            <span>${rounded(meal.calories)} kcal</span>
-            <span>P ${rounded(meal.protein)}g</span>
-            <span>F ${rounded(meal.fat)}g</span>
-            <span>C ${rounded(meal.carbs)}g</span>
+            <span>${formatDecimal(meal.calories)} kcal</span>
+            <span>P ${formatGrams(meal.protein)}g</span>
+            <span>F ${formatGrams(meal.fat)}g</span>
+            <span>C ${formatGrams(meal.carbs)}g</span>
           </div>
         </div>
-        <button class="icon-button" title="削除" data-delete-meal="${meal.id}">×</button>
+        <div class="meal-actions">
+          <button class="small-button" type="button" data-edit-meal="${meal.id}">編集</button>
+          <button class="small-button danger" type="button" data-delete-meal="${meal.id}">削除</button>
+        </div>
       </article>
     `
     )
@@ -524,13 +525,51 @@ function setupDefaults() {
 
 function resetMealForm() {
   $("mealForm").reset();
+  $("editingMealId").value = "";
   $("mealDate").value = $("todayDate").value || today();
   $("mealPhoto").value = "";
   $("mealCamera").value = "";
+  $("nutritionLabelPhotos").value = "";
+  nutritionLabelPhotos = [];
+  $("nutritionLabelStatus").textContent = "コンビニ商品などの栄養成分表示を最大4枚まで追加できます。";
   $("photoPreview").removeAttribute("src");
   document.querySelector(".photo-drop").classList.remove("has-image");
   $("photoHint").textContent = "写真を選択";
+  $("mealSubmitButton").textContent = "保存";
+  $("cancelMealEdit").classList.remove("is-visible");
   selectedPhoto = "";
+}
+
+function startMealEdit(meal) {
+  nutritionLabelPhotos = [];
+  $("nutritionLabelPhotos").value = "";
+  $("nutritionLabelStatus").textContent = "コンビニ商品などの栄養成分表示を最大4枚まで追加できます。";
+  $("editingMealId").value = meal.id;
+  $("mealDate").value = meal.date;
+  $("mealType").value = meal.type;
+  $("mealName").value = meal.name;
+  $("mealCalories").value = meal.calories;
+  $("mealProtein").value = meal.protein;
+  $("mealFat").value = meal.fat;
+  $("mealCarbs").value = meal.carbs;
+  $("mealNote").value = meal.note || "";
+  selectedPhoto = meal.photo || "";
+
+  if (selectedPhoto) {
+    $("photoPreview").src = selectedPhoto;
+    document.querySelector(".photo-drop").classList.add("has-image");
+    $("photoHint").textContent = "写真を変更";
+  } else {
+    $("photoPreview").removeAttribute("src");
+    document.querySelector(".photo-drop").classList.remove("has-image");
+    $("photoHint").textContent = "写真を選択";
+  }
+
+  $("mealSubmitButton").textContent = "更新";
+  $("cancelMealEdit").classList.add("is-visible");
+  setStatus("mealStatus", `「${meal.name}」を編集中です。`);
+  setView("meal");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function syncBodyWeightFromLatestWeight() {
@@ -593,6 +632,32 @@ async function handlePhotoSelection(event) {
   }
 }
 
+async function handleNutritionLabelSelection(event) {
+  const files = [...event.target.files].slice(0, 4);
+  if (!files.length) return;
+  if (files.some((file) => !isLikelyImage(file))) {
+    setStatus("mealStatus", "栄養成分表示には画像ファイルを選択してください。", "error");
+    event.target.value = "";
+    return;
+  }
+
+  setStatus("mealStatus", "栄養成分表示の写真を読み込んでいます。");
+  try {
+    nutritionLabelPhotos = await Promise.all(
+      files.map(async (file) => resizeImage(await readFileAsDataUrl(file), 1400, 0.82))
+    );
+    $("nutritionLabelStatus").textContent =
+      `${nutritionLabelPhotos.length}枚の栄養成分表示を追加しました。AIが記載値を読み取って合計します。`;
+    setStatus("mealStatus", "栄養成分表示の写真を追加しました。");
+  } catch (error) {
+    nutritionLabelPhotos = [];
+    $("nutritionLabelStatus").textContent = "栄養成分表示の写真を読み込めませんでした。";
+    setStatus("mealStatus", "栄養成分表示の写真を読み込めませんでした。", "error");
+  } finally {
+    event.target.value = "";
+  }
+}
+
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => setView(tab.dataset.view));
 });
@@ -601,22 +666,99 @@ $("todayDate").addEventListener("change", renderDashboard);
 
 $("mealPhoto").addEventListener("change", handlePhotoSelection);
 $("mealCamera").addEventListener("change", handlePhotoSelection);
+$("nutritionLabelPhotos").addEventListener("change", handleNutritionLabelSelection);
 
-$("estimateButton").addEventListener("click", () => {
-  const sample = samples[Math.floor(Math.random() * samples.length)];
-  $("mealName").value = sample.name;
-  $("mealCalories").value = sample.calories;
-  $("mealProtein").value = sample.protein;
-  $("mealFat").value = sample.fat;
-  $("mealCarbs").value = sample.carbs;
-  $("mealNote").value = "試作版の仮推定です。量に合わせて修正してください。";
+function formatConfidence(value) {
+  return `${Math.round(number(value) * 100)}%`;
+}
+
+$("estimateButton").addEventListener("click", async () => {
+  const analysisDetails = $("mealAnalysisDetails").value.trim();
+  if (!selectedPhoto && !nutritionLabelPhotos.length && !analysisDetails) {
+    setStatus("mealStatus", "食事写真、栄養成分表示、または食材と分量を入力してください。", "error");
+    return;
+  }
+  if (!cloudReady || !cloudClient) {
+    setStatus("mealStatus", "AI解析を使うにはSupabase設定が必要です。", "error");
+    return;
+  }
+  if (!cloudUser) {
+    setStatus("mealStatus", "AI解析を使うには設定画面からログインしてください。", "error");
+    return;
+  }
+
+  const button = $("estimateButton");
+  button.disabled = true;
+  button.textContent = "AIが計算中...";
+  setStatus(
+    "mealStatus",
+    nutritionLabelPhotos.length
+      ? "栄養成分表示を読み取り、食べた量に合わせて計算しています。"
+      : selectedPhoto
+        ? "写真と入力した分量から計算しています。"
+        : "入力した食材と分量から計算しています。"
+  );
+
+  try {
+    const { data, error } = await cloudClient.functions.invoke("analyze-meal", {
+      body: {
+        image: selectedPhoto,
+        labelImages: nutritionLabelPhotos,
+        hint: $("mealName").value.trim(),
+        details: analysisDetails,
+      },
+    });
+    if (error) {
+      let context = null;
+      try {
+        context = error.context?.json ? await error.context.json() : null;
+      } catch {
+        context = null;
+      }
+      throw new Error(context?.error || error.message);
+    }
+    if (!data || typeof data !== "object") throw new Error("Invalid AI response");
+    if (data.error) throw new Error(data.error);
+
+    $("mealName").value = data.name || "";
+    $("mealCalories").value = number(data.calories);
+    $("mealProtein").value = number(data.protein);
+    $("mealFat").value = number(data.fat);
+    $("mealCarbs").value = number(data.carbs);
+
+    const details = Array.isArray(data.items) ? data.items.join("、") : "";
+    const assumptions = Array.isArray(data.assumptions) ? data.assumptions.join("、") : "";
+    $("mealNote").value = [
+      `AI栄養推定（信頼度 ${formatConfidence(data.confidence)}）`,
+      nutritionLabelPhotos.length ? `読み取った栄養成分表示: ${nutritionLabelPhotos.length}枚` : "",
+      analysisDetails ? `入力した食材・分量: ${analysisDetails}` : "",
+      details ? `推定した内容: ${details}` : "",
+      assumptions ? `注意点: ${assumptions}` : "",
+      "数値を確認してから保存してください。",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    setStatus("mealStatus", "AI推定が完了しました。内容と量を確認してから保存してください。");
+  } catch (error) {
+    console.error("AI meal analysis failed", error);
+    setStatus(
+      "mealStatus",
+      `AI解析に失敗しました。${error instanceof Error ? error.message : "しばらく待って再試行してください。"}`,
+      "error"
+    );
+  } finally {
+    button.disabled = false;
+    button.textContent = "AIで計算・写真解析";
+  }
 });
 
 $("mealForm").addEventListener("submit", async (event) => {
   event.preventDefault();
+  const editingId = $("editingMealId").value;
+  const existingMeal = editingId ? state.meals.find((item) => item.id === editingId) : null;
   const meal = {
-    id: createId(),
-    createdAt: new Date().toISOString(),
+    id: existingMeal?.id || createId(),
+    createdAt: existingMeal?.createdAt || new Date().toISOString(),
     date: $("mealDate").value,
     type: $("mealType").value,
     name: $("mealName").value,
@@ -626,10 +768,14 @@ $("mealForm").addEventListener("submit", async (event) => {
     carbs: number($("mealCarbs").value),
     note: $("mealNote").value.trim(),
     photo: selectedPhoto,
+    photoPath: existingMeal?.photoPath || "",
   };
-  state.meals.push(meal);
+  const previousMeals = [...state.meals];
+  state.meals = existingMeal
+    ? state.meals.map((item) => (item.id === meal.id ? meal : item))
+    : [...state.meals, meal];
   if (!saveState()) {
-    state.meals = state.meals.filter((item) => item.id !== meal.id);
+    state.meals = previousMeals;
     setStatus("mealStatus", "保存できませんでした。写真を外すか、小さい写真で試してください。", "error");
     return;
   }
@@ -637,25 +783,51 @@ $("mealForm").addEventListener("submit", async (event) => {
     await saveMealToCloud(meal);
     saveState();
   } catch (error) {
-    state.meals = state.meals.filter((item) => item.id !== meal.id);
+    state.meals = previousMeals;
     saveState();
     setStatus("mealStatus", "クラウドに保存できませんでした。接続とSupabase設定を確認してください。", "error");
     return;
   }
   resetMealForm();
   renderAll();
-  setStatus("mealStatus", `${meal.date} の食事「${meal.name}」を保存しました。`);
-  setView("dashboard");
+  setStatus("mealStatus", `${meal.date} の食事「${meal.name}」を${existingMeal ? "更新" : "保存"}しました。`);
+  setView(existingMeal ? "history" : "dashboard");
 });
 
 $("mealList").addEventListener("click", async (event) => {
-  const id = event.target.dataset.deleteMeal;
-  if (!id) return;
-  const meal = state.meals.find((item) => item.id === id);
-  state.meals = state.meals.filter((meal) => meal.id !== id);
-  await deleteMealFromCloud(meal || {});
-  saveState();
-  renderAll();
+  const editId = event.target.dataset.editMeal;
+  const deleteId = event.target.dataset.deleteMeal;
+
+  if (editId) {
+    const meal = state.meals.find((item) => item.id === editId);
+    if (meal) startMealEdit(meal);
+    return;
+  }
+
+  if (deleteId) {
+    const meal = state.meals.find((item) => item.id === deleteId);
+    if (!meal || !window.confirm(`「${meal.name}」を削除しますか？`)) return;
+
+    const previousMeals = [...state.meals];
+    state.meals = state.meals.filter((item) => item.id !== deleteId);
+    if (!(await deleteMealFromCloud(meal))) {
+      state.meals = previousMeals;
+      setStatus("mealStatus", "クラウドから削除できませんでした。", "error");
+      return;
+    }
+    if (!saveState()) {
+      state.meals = previousMeals;
+      setStatus("mealStatus", "削除を保存できませんでした。", "error");
+      return;
+    }
+    if ($("editingMealId").value === deleteId) resetMealForm();
+    renderAll();
+  }
+});
+
+$("cancelMealEdit").addEventListener("click", () => {
+  resetMealForm();
+  setStatus("mealStatus", "編集を取り消しました。");
 });
 
 $("weightForm").addEventListener("submit", async (event) => {

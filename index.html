@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1f9d7a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Nourish Track" />
-    <title>Nourish Track Prototype</title>
+    <meta name="apple-mobile-web-app-title" content="体ログ" />
+    <title>体ログ</title>
     <link rel="manifest" href="./manifest.json" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
@@ -14,7 +14,7 @@
     <header class="app-header">
       <div>
         <p class="eyebrow">Nutrition Photo Log</p>
-        <h1>Nourish Track</h1>
+        <h1>体ログ</h1>
       </div>
       <nav class="tabs" aria-label="Main views">
         <button class="tab is-active" data-view="dashboard">概要</button>
@@ -118,6 +118,7 @@
         </div>
 
         <form id="mealForm" class="editor-layout">
+          <input id="editingMealId" type="hidden" />
           <section class="photo-uploader">
             <input id="mealPhoto" type="file" />
             <input id="mealCamera" type="file" accept="image/*" capture="environment" />
@@ -129,7 +130,23 @@
               <label class="ghost-button photo-action" for="mealCamera">カメラで撮る</label>
               <label class="ghost-button photo-action" for="mealPhoto">写真を選ぶ</label>
             </div>
-            <button class="ghost-button" id="estimateButton" type="button">写真から仮推定</button>
+            <input id="nutritionLabelPhotos" type="file" accept="image/*" multiple />
+            <label class="ghost-button photo-action nutrition-label-button" for="nutritionLabelPhotos">
+              栄養成分表示の写真を追加
+            </label>
+            <div id="nutritionLabelStatus" class="nutrition-label-status">
+              コンビニ商品などの栄養成分表示を最大4枚まで追加できます。
+            </div>
+            <label class="analysis-details">
+              食材・分量の補足
+              <textarea
+                id="mealAnalysisDetails"
+                rows="3"
+                placeholder="例: ごはん200g、鶏むね肉150g（皮なし・加熱後）。写真の商品は1袋全部食べた"
+              ></textarea>
+              <span>食べた個数や重量も入力してください。栄養表示の数値と入力した摂取量を優先します。</span>
+            </label>
+            <button class="ghost-button" id="estimateButton" type="button">AIで計算・写真解析</button>
           </section>
 
           <section class="form-panel">
@@ -153,26 +170,29 @@
               </label>
               <label>
                 カロリー
-                <input id="mealCalories" type="number" min="0" inputmode="decimal" required />
+                <input id="mealCalories" type="number" min="0" step="any" inputmode="decimal" required />
               </label>
               <label>
                 タンパク質 g
-                <input id="mealProtein" type="number" min="0" inputmode="decimal" required />
+                <input id="mealProtein" type="number" min="0" step="any" inputmode="decimal" required />
               </label>
               <label>
                 脂質 g
-                <input id="mealFat" type="number" min="0" inputmode="decimal" required />
+                <input id="mealFat" type="number" min="0" step="any" inputmode="decimal" required />
               </label>
               <label>
                 炭水化物 g
-                <input id="mealCarbs" type="number" min="0" inputmode="decimal" required />
+                <input id="mealCarbs" type="number" min="0" step="any" inputmode="decimal" required />
               </label>
               <label class="wide">
                 メモ
                 <textarea id="mealNote" rows="3" placeholder="量や調整した内容など"></textarea>
               </label>
             </div>
-            <button class="primary-button" type="submit">保存</button>
+            <div class="form-actions meal-form-actions">
+              <button class="primary-button" id="mealSubmitButton" type="submit">保存</button>
+              <button class="ghost-button inline-ghost" id="cancelMealEdit" type="button">編集を取り消す</button>
+            </div>
             <p id="mealStatus" class="save-status" aria-live="polite"></p>
           </section>
         </form>
