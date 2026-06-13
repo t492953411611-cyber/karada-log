@@ -117,6 +117,7 @@ function updateAuthUi() {
   if (!cloudReady) {
     $("signInButton").disabled = true;
     $("signUpButton").disabled = true;
+    $("resetPasswordButton").disabled = true;
     $("setPasswordButton").classList.remove("is-visible");
     $("signOutButton").classList.remove("is-visible");
     return;
@@ -124,6 +125,7 @@ function updateAuthUi() {
 
   $("signInButton").hidden = Boolean(cloudUser);
   $("signUpButton").hidden = Boolean(cloudUser);
+  $("resetPasswordButton").hidden = Boolean(cloudUser);
   $("setPasswordButton").classList.toggle("is-visible", Boolean(cloudUser));
   $("signOutButton").classList.toggle("is-visible", Boolean(cloudUser));
   $("authEmail").disabled = Boolean(cloudUser);
@@ -147,9 +149,13 @@ async function setupCloudAuth() {
   updateAuthUi();
   if (cloudUser) await loadCloudState();
 
-  cloudClient.auth.onAuthStateChange(async (_event, session) => {
+  cloudClient.auth.onAuthStateChange(async (event, session) => {
     cloudUser = session?.user || null;
     updateAuthUi();
+    if (event === "PASSWORD_RECOVERY") {
+      setView("settings");
+      setStatus("authStatus", "新しいパスワードを入力して「パスワードを設定・変更」を押してください。");
+    }
     if (cloudUser) await loadCloudState();
   });
 }
@@ -982,6 +988,30 @@ $("signUpButton").addEventListener("click", async () => {
       ? "登録できませんでした。すでに登録済みの場合は「ログイン」を押してください。"
       : "新規登録してログインしました。",
     error || !data.session ? "error" : "success"
+  );
+});
+
+$("resetPasswordButton").addEventListener("click", async () => {
+  if (!cloudReady) {
+    setStatus("authStatus", "Supabase設定がまだ入っていません。", "error");
+    return;
+  }
+
+  const email = $("authEmail").value.trim();
+  if (!email) {
+    setStatus("authStatus", "メールアドレスを入力してください。", "error");
+    return;
+  }
+
+  const { error } = await cloudClient.auth.resetPasswordForEmail(email, {
+    redirectTo: location.href.split("#")[0],
+  });
+  setStatus(
+    "authStatus",
+    error
+      ? "パスワード設定メールを送信できませんでした。しばらく待って再試行してください。"
+      : "パスワード設定メールを送りました。メール内のリンクから体ログへ戻ってください。",
+    error ? "error" : "success"
   );
 });
 
