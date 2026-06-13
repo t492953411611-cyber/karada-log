@@ -670,9 +670,28 @@ label textarea {
 
 .auth-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
   gap: 10px;
   align-items: center;
+}
+
+.auth-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.auth-actions .primary-button,
+.auth-actions .ghost-button {
+  width: auto;
+  margin-top: 0;
+}
+
+.auth-help {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 @media (max-width: 900px) {
@@ -758,6 +777,16 @@ label textarea {
 
   .auth-row {
     grid-template-columns: 1fr;
+  }
+
+  .auth-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .auth-actions .primary-button,
+  .auth-actions .ghost-button {
+    width: 100%;
   }
 
   .hero-grid {

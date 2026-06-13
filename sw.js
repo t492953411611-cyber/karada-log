@@ -1,4 +1,4 @@
-const cacheName = "karada-log-v13";
+const cacheName = "karada-log-v14";
 const appShell = ["./", "./index.html", "./styles.css", "./app.js", "./config.js", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", (event) => {

@@ -253,9 +253,23 @@
             </div>
             <div class="auth-row">
               <input id="authEmail" type="email" placeholder="メールアドレス" autocomplete="email" />
-              <button class="primary-button" id="sendLoginLink" type="button">ログインリンク送信</button>
-              <button class="ghost-button inline-ghost" id="signOutButton" type="button">ログアウト</button>
+              <input
+                id="authPassword"
+                type="password"
+                minlength="8"
+                placeholder="パスワード（8文字以上）"
+                autocomplete="current-password"
+              />
+              <div class="auth-actions">
+                <button class="primary-button" id="signInButton" type="button">ログイン</button>
+                <button class="ghost-button" id="signUpButton" type="button">新規登録</button>
+                <button class="primary-button inline-ghost" id="setPasswordButton" type="button">
+                  パスワードを設定・変更
+                </button>
+                <button class="ghost-button inline-ghost" id="signOutButton" type="button">ログアウト</button>
+              </div>
             </div>
+            <p class="auth-help">この画面のまま登録・ログインできます。パスワードは8文字以上にしてください。</p>
             <p id="authStatus" class="save-status" aria-live="polite"></p>
           </section>
           <label>

@@ -115,13 +115,21 @@ function setCloudStatus(message) {
 
 function updateAuthUi() {
   if (!cloudReady) {
-    $("sendLoginLink").disabled = true;
+    $("signInButton").disabled = true;
+    $("signUpButton").disabled = true;
+    $("setPasswordButton").classList.remove("is-visible");
     $("signOutButton").classList.remove("is-visible");
     return;
   }
 
-  $("sendLoginLink").disabled = Boolean(cloudUser);
+  $("signInButton").hidden = Boolean(cloudUser);
+  $("signUpButton").hidden = Boolean(cloudUser);
+  $("setPasswordButton").classList.toggle("is-visible", Boolean(cloudUser));
   $("signOutButton").classList.toggle("is-visible", Boolean(cloudUser));
+  $("authEmail").disabled = Boolean(cloudUser);
+  if (cloudUser?.email) $("authEmail").value = cloudUser.email;
+  $("authPassword").value = "";
+  $("authPassword").autocomplete = cloudUser ? "new-password" : "current-password";
   setCloudStatus(
     cloudUser
       ? `${cloudUser.email || "ログイン中のユーザー"} としてクラウド保存中です。`
@@ -914,30 +922,89 @@ $("settingsForm").addEventListener("submit", async (event) => {
   setView("dashboard");
 });
 
-$("sendLoginLink").addEventListener("click", async () => {
+function getAuthCredentials() {
+  return {
+    email: $("authEmail").value.trim(),
+    password: $("authPassword").value,
+  };
+}
+
+function validateAuthCredentials(requireEmail = true) {
+  const credentials = getAuthCredentials();
+  if (requireEmail && !credentials.email) {
+    setStatus("authStatus", "メールアドレスを入力してください。", "error");
+    return null;
+  }
+  if (credentials.password.length < 8) {
+    setStatus("authStatus", "パスワードは8文字以上で入力してください。", "error");
+    return null;
+  }
+  return credentials;
+}
+
+$("signInButton").addEventListener("click", async () => {
   if (!cloudReady) {
     setStatus("authStatus", "Supabase設定がまだ入っていません。", "error");
     return;
   }
 
-  const email = $("authEmail").value.trim();
-  if (!email) {
-    setStatus("authStatus", "メールアドレスを入力してください。", "error");
-    return;
-  }
+  const credentials = validateAuthCredentials();
+  if (!credentials) return;
 
-  const { error } = await cloudClient.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: location.href.split("#")[0],
-    },
+  const { error } = await cloudClient.auth.signInWithPassword({
+    email: credentials.email,
+    password: credentials.password,
   });
 
   setStatus(
     "authStatus",
-    error ? "ログインリンクを送信できませんでした。Supabase設定を確認してください。" : "ログインリンクをメールで送信しました。",
+    error ? "ログインできませんでした。メールアドレスとパスワードを確認してください。" : "ログインしました。",
     error ? "error" : "success"
   );
+});
+
+$("signUpButton").addEventListener("click", async () => {
+  if (!cloudReady) {
+    setStatus("authStatus", "Supabase設定がまだ入っていません。", "error");
+    return;
+  }
+
+  const credentials = validateAuthCredentials();
+  if (!credentials) return;
+
+  const { data, error } = await cloudClient.auth.signUp({
+    email: credentials.email,
+    password: credentials.password,
+  });
+  setStatus(
+    "authStatus",
+    error || !data.session
+      ? "登録できませんでした。すでに登録済みの場合は「ログイン」を押してください。"
+      : "新規登録してログインしました。",
+    error || !data.session ? "error" : "success"
+  );
+});
+
+$("setPasswordButton").addEventListener("click", async () => {
+  if (!cloudReady || !cloudUser) return;
+  const credentials = validateAuthCredentials(false);
+  if (!credentials) return;
+
+  const { error } = await cloudClient.auth.updateUser({
+    password: credentials.password,
+  });
+  $("authPassword").value = "";
+  setStatus(
+    "authStatus",
+    error ? "パスワードを設定できませんでした。" : "パスワードを設定しました。次回から画面内でログインできます。",
+    error ? "error" : "success"
+  );
+});
+
+$("authPassword").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  if (!cloudUser) $("signInButton").click();
 });
 
 $("signOutButton").addEventListener("click", async () => {
