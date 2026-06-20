@@ -1,4 +1,5 @@
-const storeKey = "nourish-track-prototype";
+const storeKey = "karada-log";
+const legacyStoreKey = "nourish-track-prototype";
 
 const defaultState = {
   settings: {
@@ -32,10 +33,35 @@ const formatDecimal = (value) =>
   });
 const formatGrams = formatDecimal;
 
+function parseStoredState(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? { ...defaultState, ...parsed } : null;
+  } catch {
+    return null;
+  }
+}
+
 function loadState() {
   try {
-    const raw = localStorage.getItem(storeKey);
-    return raw ? { ...defaultState, ...JSON.parse(raw) } : structuredClone(defaultState);
+    const currentRaw = localStorage.getItem(storeKey);
+    if (currentRaw !== null) {
+      return parseStoredState(currentRaw) || structuredClone(defaultState);
+    }
+
+    const legacyRaw = localStorage.getItem(legacyStoreKey);
+    if (legacyRaw === null) return structuredClone(defaultState);
+
+    const legacyState = parseStoredState(legacyRaw);
+    if (!legacyState) return structuredClone(defaultState);
+
+    try {
+      localStorage.setItem(storeKey, legacyRaw);
+    } catch (error) {
+      console.error("Failed to migrate app state", error);
+    }
+
+    return legacyState;
   } catch {
     return structuredClone(defaultState);
   }
