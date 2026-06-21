@@ -1,4 +1,4 @@
-const cacheName = "karada-log-v17";
+const cacheName = "karada-log-v18";
 const appShell = ["./", "./index.html", "./styles.css", "./app.js", "./config.js", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -26,6 +26,11 @@ self.addEventListener("fetch", (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+      .catch(() =>
+        caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return event.request.mode === "navigate" ? caches.match("./index.html") : Response.error();
+        })
+      )
   );
 });

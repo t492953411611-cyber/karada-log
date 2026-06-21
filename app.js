@@ -24,7 +24,11 @@ let cloudUser = null;
 let cloudReady = false;
 
 const $ = (id) => document.getElementById(id);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 10);
+};
 const number = (value) => Number(value) || 0;
 const rounded = (value) => Math.round(value);
 const formatDecimal = (value) =>
@@ -36,7 +40,14 @@ const formatGrams = formatDecimal;
 function parseStoredState(raw) {
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? { ...defaultState, ...parsed } : null;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return {
+      ...defaultState,
+      ...parsed,
+      settings: { ...defaultState.settings, ...(parsed.settings || {}) },
+      meals: Array.isArray(parsed.meals) ? parsed.meals : [],
+      weights: Array.isArray(parsed.weights) ? parsed.weights : [],
+    };
   } catch {
     return null;
   }
@@ -81,7 +92,19 @@ function createId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
     return window.crypto.randomUUID();
   }
-  return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  const bytes = new Uint8Array(16);
+  if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+    window.crypto.getRandomValues(bytes);
+  } else {
+    bytes.forEach((_, index) => {
+      bytes[index] = Math.floor(Math.random() * 256);
+    });
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
 }
 
 function setStatus(id, message, tone = "success") {
@@ -187,42 +210,51 @@ async function setupCloudAuth() {
 }
 
 async function loadCloudState() {
-  if (!cloudReady || !cloudUser) return;
+  if (!cloudReady || !cloudUser) return false;
 
   setCloudStatus("クラウドからデータを読み込んでいます。");
 
-  const [{ data: profile }, { data: meals }, { data: weights }] = await Promise.all([
-    cloudClient.from("profiles").select("settings").eq("user_id", cloudUser.id).maybeSingle(),
-    cloudClient.from("meals").select("*").order("created_at", { ascending: true }),
-    cloudClient.from("weights").select("*").order("date", { ascending: true }),
-  ]);
+  try {
+    const [profileResult, mealsResult, weightsResult] = await Promise.all([
+      cloudClient.from("profiles").select("settings").eq("user_id", cloudUser.id).maybeSingle(),
+      cloudClient.from("meals").select("*").order("created_at", { ascending: true }),
+      cloudClient.from("weights").select("*").order("date", { ascending: true }),
+    ]);
+    const requestError = profileResult.error || mealsResult.error || weightsResult.error;
+    if (requestError) throw requestError;
 
-  const cloudMeals = await Promise.all(
-    (meals || []).map(async (meal) => ({
-      id: meal.id,
-      createdAt: meal.created_at,
-      date: meal.date,
-      type: meal.type,
-      name: meal.name,
-      calories: number(meal.calories),
-      protein: number(meal.protein),
-      fat: number(meal.fat),
-      carbs: number(meal.carbs),
-      note: meal.note || "",
-      photoPath: meal.photo_path || "",
-      photo: meal.photo_path ? await signedMealPhotoUrl(meal.photo_path) : "",
-    }))
-  );
+    const cloudMeals = await Promise.all(
+      (mealsResult.data || []).map(async (meal) => ({
+        id: meal.id,
+        createdAt: meal.created_at,
+        date: meal.date,
+        type: meal.type,
+        name: meal.name,
+        calories: number(meal.calories),
+        protein: number(meal.protein),
+        fat: number(meal.fat),
+        carbs: number(meal.carbs),
+        note: meal.note || "",
+        photoPath: meal.photo_path || "",
+        photo: meal.photo_path ? await signedMealPhotoUrl(meal.photo_path) : "",
+      }))
+    );
 
-  state = {
-    settings: { ...defaultState.settings, ...(profile?.settings || {}) },
-    meals: cloudMeals,
-    weights: (weights || []).map((item) => ({ date: item.date, value: number(item.value) })),
-  };
-  saveState();
-  fillSettingsForm();
-  renderAll();
-  setCloudStatus(`${cloudUser.email || "ログイン中のユーザー"} としてクラウド保存中です。`);
+    state = {
+      settings: { ...defaultState.settings, ...(profileResult.data?.settings || {}) },
+      meals: cloudMeals,
+      weights: (weightsResult.data || []).map((item) => ({ date: item.date, value: number(item.value) })),
+    };
+    saveState();
+    fillSettingsForm();
+    renderAll();
+    setCloudStatus((cloudUser.email || "ログイン中のユーザー") + " としてクラウド保存中です。");
+    return true;
+  } catch (error) {
+    console.error("Failed to load cloud state", error);
+    setCloudStatus("クラウドの読み込みに失敗しました。端末に保存済みのデータを表示しています。");
+    return false;
+  }
 }
 
 async function signedMealPhotoUrl(path) {
@@ -249,62 +281,88 @@ async function uploadMealPhoto(meal) {
 
 async function saveSettingsToCloud() {
   if (!cloudReady || !cloudUser) return true;
-  const { error } = await cloudClient.from("profiles").upsert({
-    user_id: cloudUser.id,
-    settings: state.settings,
-    updated_at: new Date().toISOString(),
-  });
-  return !error;
+  try {
+    const { error } = await cloudClient.from("profiles").upsert({
+      user_id: cloudUser.id,
+      settings: state.settings,
+      updated_at: new Date().toISOString(),
+    });
+    return !error;
+  } catch (error) {
+    console.error("Failed to save settings to cloud", error);
+    return false;
+  }
 }
 
 async function saveMealToCloud(meal) {
   if (!cloudReady || !cloudUser) return true;
-  const photoPath = await uploadMealPhoto(meal);
-  const { error } = await cloudClient.from("meals").upsert({
-    id: meal.id,
-    user_id: cloudUser.id,
-    date: meal.date,
-    type: meal.type,
-    name: meal.name,
-    calories: meal.calories,
-    protein: meal.protein,
-    fat: meal.fat,
-    carbs: meal.carbs,
-    note: meal.note,
-    photo_path: photoPath,
-    created_at: meal.createdAt,
-  });
-  if (error) throw error;
-  meal.photoPath = photoPath;
-  if (photoPath) meal.photo = await signedMealPhotoUrl(photoPath);
-  return true;
+  try {
+    const photoPath = await uploadMealPhoto(meal);
+    const { error } = await cloudClient.from("meals").upsert({
+      id: meal.id,
+      user_id: cloudUser.id,
+      date: meal.date,
+      type: meal.type,
+      name: meal.name,
+      calories: meal.calories,
+      protein: meal.protein,
+      fat: meal.fat,
+      carbs: meal.carbs,
+      note: meal.note,
+      photo_path: photoPath,
+      created_at: meal.createdAt,
+    });
+    if (error) throw error;
+    meal.photoPath = photoPath;
+    if (photoPath) meal.photo = await signedMealPhotoUrl(photoPath);
+    return true;
+  } catch (error) {
+    console.error("Failed to save meal to cloud", error);
+    return false;
+  }
 }
 
 async function deleteMealFromCloud(meal) {
   if (!cloudReady || !cloudUser) return true;
-  if (meal.photoPath) await cloudClient.storage.from("meal-photos").remove([meal.photoPath]);
-  const { error } = await cloudClient.from("meals").delete().eq("id", meal.id);
-  return !error;
+  try {
+    if (meal.photoPath) await cloudClient.storage.from("meal-photos").remove([meal.photoPath]);
+    const { error } = await cloudClient.from("meals").delete().eq("id", meal.id);
+    return !error;
+  } catch (error) {
+    console.error("Failed to delete meal from cloud", error);
+    return false;
+  }
 }
 
 async function saveWeightToCloud(date, value, oldDate = "") {
   if (!cloudReady || !cloudUser) return true;
-  if (oldDate && oldDate !== date) {
-    await cloudClient.from("weights").delete().eq("date", oldDate);
+  try {
+    if (oldDate && oldDate !== date) {
+      const { error } = await cloudClient.from("weights").delete().eq("date", oldDate);
+      if (error) return false;
+    }
+    const { error } = await cloudClient.from("weights").upsert({
+      user_id: cloudUser.id,
+      date,
+      value,
+      updated_at: new Date().toISOString(),
+    });
+    return !error;
+  } catch (error) {
+    console.error("Failed to save weight to cloud", error);
+    return false;
   }
-  const { error } = await cloudClient.from("weights").upsert({
-    user_id: cloudUser.id,
-    date,
-    value,
-    updated_at: new Date().toISOString(),
-  });
-  return !error;
 }
 
 async function deleteWeightFromCloud(date) {
   if (!cloudReady || !cloudUser) return true;
-  const { error } = await cloudClient.from("weights").delete().eq("date", date);
-  return !error;
+  try {
+    const { error } = await cloudClient.from("weights").delete().eq("date", date);
+    return !error;
+  } catch (error) {
+    console.error("Failed to delete weight from cloud", error);
+    return false;
+  }
 }
 
 function bmr(settings = state.settings) {
@@ -819,18 +877,17 @@ $("mealForm").addEventListener("submit", async (event) => {
     setStatus("mealStatus", "保存できませんでした。写真を外すか、小さい写真で試してください。", "error");
     return;
   }
-  try {
-    await saveMealToCloud(meal);
-    saveState();
-  } catch (error) {
-    state.meals = previousMeals;
-    saveState();
-    setStatus("mealStatus", "クラウドに保存できませんでした。接続とSupabase設定を確認してください。", "error");
-    return;
-  }
+  const cloudSaved = await saveMealToCloud(meal);
+  if (cloudSaved) saveState();
+
   resetMealForm();
   renderAll();
-  setStatus("mealStatus", `${meal.date} の食事「${meal.name}」を${existingMeal ? "更新" : "保存"}しました。`);
+  const savedMessage = meal.date + " の食事「" + meal.name + "」を" + (existingMeal ? "更新" : "保存") + "しました。";
+  setStatus(
+    "mealStatus",
+    cloudSaved ? savedMessage : savedMessage + " 端末には保存しましたが、クラウド同期に失敗しました。",
+    cloudSaved ? "success" : "error"
+  );
   setView(existingMeal ? "history" : "dashboard");
 });
 
@@ -884,13 +941,15 @@ $("weightForm").addEventListener("submit", async (event) => {
     setStatus("weightStatus", "体重を保存できませんでした。ブラウザの保存領域を確認してください。", "error");
     return;
   }
-  if (!(await saveWeightToCloud(date, value, editingDate))) {
-    setStatus("weightStatus", "クラウドに体重を保存できませんでした。", "error");
-    return;
-  }
+  const cloudSaved = await saveWeightToCloud(date, value, editingDate);
   renderAll();
   resetWeightForm();
-  setStatus("weightStatus", `${date} の体重 ${value.toFixed(1)} kg を${existed ? "上書き保存" : "保存"}しました。`);
+  const savedMessage = date + " の体重 " + value.toFixed(1) + " kg を" + (existed ? "上書き保存" : "保存") + "しました。";
+  setStatus(
+    "weightStatus",
+    cloudSaved ? savedMessage : savedMessage + " 端末には保存しましたが、クラウド同期に失敗しました。",
+    cloudSaved ? "success" : "error"
+  );
 });
 
 $("weightList").addEventListener("click", async (event) => {
@@ -910,19 +969,27 @@ $("weightList").addEventListener("click", async (event) => {
   }
 
   if (deleteDate) {
+    const previousWeights = [...state.weights];
+    const previousBodyWeight = state.settings.bodyWeight;
     state.weights = state.weights.filter((weight) => weight.date !== deleteDate);
     syncBodyWeightFromLatestWeight();
     if (!(await deleteWeightFromCloud(deleteDate))) {
+      state.weights = previousWeights;
+      state.settings.bodyWeight = previousBodyWeight;
+      $("bodyWeight").value = previousBodyWeight;
       setStatus("weightStatus", "クラウドから削除できませんでした。", "error");
       return;
     }
     if (!saveState()) {
+      state.weights = previousWeights;
+      state.settings.bodyWeight = previousBodyWeight;
+      $("bodyWeight").value = previousBodyWeight;
       setStatus("weightStatus", "削除を保存できませんでした。", "error");
       return;
     }
     renderAll();
     resetWeightForm();
-    setStatus("weightStatus", `${deleteDate} の体重記録を削除しました。`);
+    setStatus("weightStatus", deleteDate + " の体重記録を削除しました。");
   }
 });
 
@@ -1008,13 +1075,13 @@ $("signUpButton").addEventListener("click", async () => {
     email: credentials.email,
     password: credentials.password,
   });
-  setStatus(
-    "authStatus",
-    error || !data.session
-      ? "登録できませんでした。すでに登録済みの場合は「ログイン」を押してください。"
-      : "新規登録してログインしました。",
-    error || !data.session ? "error" : "success"
-  );
+  if (error) {
+    setStatus("authStatus", "登録できませんでした。すでに登録済みの場合は「ログイン」を押してください。", "error");
+  } else if (!data.session) {
+    setStatus("authStatus", "確認メールを送信しました。メール内のリンクを開いてからログインしてください。");
+  } else {
+    setStatus("authStatus", "新規登録してログインしました。");
+  }
 });
 
 $("resetPasswordButton").addEventListener("click", async () => {
