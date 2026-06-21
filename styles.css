@@ -701,7 +701,23 @@ label textarea {
   }
 
   .tabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    gap: 4px;
+    overflow: visible;
     margin-top: 4px;
+    padding: 4px;
+    border: 1px solid rgba(220, 228, 223, 0.95);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.94);
+  }
+
+  .tab {
+    min-width: 0;
+    padding: 10px 4px;
+    font-size: clamp(11px, 3.2vw, 14px);
+    text-align: center;
   }
 
   .hero-grid,
@@ -731,21 +747,6 @@ label textarea {
   }
 
   .tabs {
-    position: fixed;
-    right: 10px;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    left: 10px;
-    z-index: 30;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 4px;
-    overflow: visible;
-    padding: 6px;
-    border: 1px solid rgba(220, 228, 223, 0.95);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 10px 34px rgba(23, 33, 31, 0.18);
-    backdrop-filter: blur(14px);
     margin-top: 0;
   }
 
@@ -759,7 +760,7 @@ label textarea {
   main {
     width: min(100% - 22px, 1180px);
     padding-top: 12px;
-    padding-bottom: 104px;
+    padding-bottom: 56px;
   }
 
   .section-head,
