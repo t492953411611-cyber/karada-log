@@ -37,6 +37,15 @@ const formatDecimal = (value) =>
   });
 const formatGrams = formatDecimal;
 
+function getAuthRedirectUrl() {
+  if (location.hostname === "localhost" && location.port === "8000") {
+    return "http://localhost:8000/";
+  }
+
+  // Native deep link handling will be added in a later iOS update.
+  return "https://t492953411611-cyber.github.io/karada-log/";
+}
+
 function parseStoredState(raw) {
   try {
     const parsed = JSON.parse(raw);
@@ -1097,7 +1106,7 @@ $("resetPasswordButton").addEventListener("click", async () => {
   }
 
   const { error } = await cloudClient.auth.resetPasswordForEmail(email, {
-    redirectTo: location.href.split("#")[0],
+    redirectTo: getAuthRedirectUrl(),
   });
   setStatus(
     "authStatus",
