@@ -1142,6 +1142,8 @@ setupDefaults();
 renderAll();
 setupCloudAuth();
 
-if ("serviceWorker" in navigator && location.protocol !== "file:") {
+const isNativeApp = window.Capacitor?.isNativePlatform?.() === true;
+
+if (!isNativeApp && "serviceWorker" in navigator && location.protocol !== "file:") {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }

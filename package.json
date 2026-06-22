@@ -1,0 +1,21 @@
+{
+  "name": "karada-log-plus",
+  "version": "1.0.0",
+  "description": "カラダログ＋のCapacitor iOSアプリ用設定",
+  "scripts": {
+    "test": "node --check app.js && node --check config.js",
+    "build": "mkdir -p www && cp index.html app.js config.js styles.css manifest.json icon.svg sw.js www/",
+    "ios:sync": "npm run build && npx cap sync ios"
+  },
+  "type": "commonjs",
+  "private": true,
+  "dependencies": {
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/camera": "^8.2.0",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.1"
+  }
+}
