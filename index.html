@@ -275,6 +275,13 @@
             <p class="auth-help">
               以前メールリンクで利用していた方は「初回パスワード設定・忘れた場合」から設定してください。
             </p>
+            <div id="accountDeletionPanel" class="account-deletion" hidden>
+              <div>
+                <h4>アカウント削除</h4>
+                <p>クラウドの記録とこの端末の記録を完全に削除します。</p>
+              </div>
+              <button class="danger-button" id="deleteAccountButton" type="button">アカウントを削除</button>
+            </div>
             <p id="authStatus" class="save-status" aria-live="polite"></p>
           </section>
           <label>
@@ -325,6 +332,18 @@
         </form>
       </section>
     </main>
+
+    <div id="deleteAccountModal" class="modal-backdrop" hidden>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="deleteAccountTitle" aria-describedby="deleteAccountDescription">
+        <p class="eyebrow">Account</p>
+        <h2 id="deleteAccountTitle">アカウントを削除しますか？</h2>
+        <p id="deleteAccountDescription">アカウントを削除すると、クラウドに保存した設定、食事記録、体重記録、食事写真が完全に削除されます。<br />この端末に保存されたカラダログ＋の記録も削除され、ログアウトします。<br />この操作は取り消せません。本当に削除しますか？</p>
+        <div class="modal-actions">
+          <button class="ghost-button" id="cancelDeleteAccountButton" type="button">キャンセル</button>
+          <button class="danger-button" id="confirmDeleteAccountButton" type="button">アカウントを削除</button>
+        </div>
+      </section>
+    </div>
 
     <script src="./config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

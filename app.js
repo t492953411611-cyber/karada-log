@@ -46,6 +46,85 @@ function getAuthRedirectUrl() {
   return "https://t492953411611-cyber.github.io/karada-log/";
 }
 
+function openDeleteAccountModal() {
+  if (!cloudUser || isDeletingAccount) return;
+  $("deleteAccountModal").hidden = false;
+  $("cancelDeleteAccountButton").focus();
+}
+
+function closeDeleteAccountModal() {
+  if (isDeletingAccount) return;
+  $("deleteAccountModal").hidden = true;
+}
+
+function setDeleteAccountBusy(isBusy) {
+  isDeletingAccount = isBusy;
+  $("deleteAccountButton").disabled = isBusy;
+  $("cancelDeleteAccountButton").disabled = isBusy;
+  $("confirmDeleteAccountButton").disabled = isBusy;
+  $("confirmDeleteAccountButton").textContent = isBusy ? "削除しています..." : "アカウントを削除";
+}
+
+function clearDeletedAccountData() {
+  try {
+    localStorage.removeItem(storeKey);
+    localStorage.removeItem(legacyStoreKey);
+  } catch (error) {
+    console.error("Failed to clear local account data", error);
+  }
+
+  state = structuredClone(defaultState);
+  selectedPhoto = "";
+  nutritionLabelPhotos = [];
+  $("authEmail").value = "";
+  $("authPassword").value = "";
+  resetMealForm();
+  resetWeightForm();
+  fillSettingsForm();
+  renderAll();
+}
+
+function getDeleteAccountErrorMessage(error) {
+  const status = error?.context?.status;
+  const message = String(error?.message || "").toLowerCase();
+  if (status === 404 || message.includes("not found")) {
+    return "アカウント削除機能がまだ公開されていません。時間をおいて再試行してください。";
+  }
+  if (message.includes("failed to send") || message.includes("fetch")) {
+    return "アカウント削除機能に接続できませんでした。通信状態を確認して再試行してください。";
+  }
+  return "アカウントを削除できませんでした。時間をおいて再試行してください。";
+}
+
+async function deleteCurrentAccount() {
+  if (!cloudReady || !cloudUser || isDeletingAccount) return;
+
+  setDeleteAccountBusy(true);
+  try {
+    const { data, error } = await cloudClient.functions.invoke("delete-account");
+    if (error) throw error;
+    if (!data?.ok) throw new Error("Account deletion did not complete");
+
+    try {
+      await cloudClient.auth.signOut({ scope: "local" });
+    } catch (error) {
+      console.error("Failed to clear local auth session", error);
+    }
+
+    cloudUser = null;
+    clearDeletedAccountData();
+    updateAuthUi();
+    $("deleteAccountModal").hidden = true;
+    setCloudStatus("アカウントを削除し、この端末の記録を初期化しました。");
+    setStatus("authStatus", "アカウントを削除しました。", "success");
+  } catch (error) {
+    console.error("Failed to delete account", error);
+    setStatus("authStatus", getDeleteAccountErrorMessage(error), "error");
+  } finally {
+    setDeleteAccountBusy(false);
+  }
+}
+
 function parseStoredState(raw) {
   try {
     const parsed = JSON.parse(raw);
@@ -178,6 +257,9 @@ function updateAuthUi() {
     $("resetPasswordButton").disabled = true;
     $("setPasswordButton").classList.remove("is-visible");
     $("signOutButton").classList.remove("is-visible");
+    $("accountDeletionPanel").hidden = true;
+    $("deleteAccountButton").disabled = true;
+    closeDeleteAccountModal();
     return;
   }
 
@@ -186,6 +268,9 @@ function updateAuthUi() {
   $("resetPasswordButton").hidden = Boolean(cloudUser);
   $("setPasswordButton").classList.toggle("is-visible", Boolean(cloudUser));
   $("signOutButton").classList.toggle("is-visible", Boolean(cloudUser));
+  $("accountDeletionPanel").hidden = !cloudUser;
+  $("deleteAccountButton").disabled = isDeletingAccount;
+  if (!cloudUser) closeDeleteAccountModal();
   $("authEmail").disabled = Boolean(cloudUser);
   if (cloudUser?.email) $("authEmail").value = cloudUser.email;
   $("authPassword").value = "";
@@ -1137,6 +1222,16 @@ $("authPassword").addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
   event.preventDefault();
   if (!cloudUser) $("signInButton").click();
+});
+
+$("deleteAccountButton").addEventListener("click", openDeleteAccountModal);
+$("cancelDeleteAccountButton").addEventListener("click", closeDeleteAccountModal);
+$("confirmDeleteAccountButton").addEventListener("click", deleteCurrentAccount);
+$("deleteAccountModal").addEventListener("click", (event) => {
+  if (event.target === $("deleteAccountModal")) closeDeleteAccountModal();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeDeleteAccountModal();
 });
 
 $("signOutButton").addEventListener("click", async () => {

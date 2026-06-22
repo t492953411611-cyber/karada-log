@@ -694,6 +694,87 @@ label textarea {
   font-size: 13px;
 }
 
+.account-deletion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(231, 101, 85, 0.38);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff8f6;
+}
+
+.account-deletion h4 {
+  color: var(--coral);
+  font-size: 15px;
+}
+
+.account-deletion p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.danger-button {
+  min-height: 46px;
+  border: 1px solid var(--coral);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: var(--coral);
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.danger-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(23, 33, 31, 0.48);
+}
+
+.modal-card {
+  width: min(100%, 520px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.modal-card h2 {
+  margin-top: 4px;
+}
+
+.modal-card > p:not(.eyebrow) {
+  margin-top: 16px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.modal-actions .ghost-button {
+  width: auto;
+  margin-top: 0;
+}
+
+
 @media (max-width: 900px) {
   .app-header {
     align-items: start;
@@ -783,6 +864,18 @@ label textarea {
   .auth-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .account-deletion,
+  .modal-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .account-deletion .danger-button,
+  .modal-actions .ghost-button,
+  .modal-actions .danger-button {
+    width: 100%;
   }
 
   .auth-actions .primary-button,
