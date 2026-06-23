@@ -46,24 +46,31 @@ function getAuthRedirectUrl() {
   return "https://t492953411611-cyber.github.io/karada-log/";
 }
 
+function setDeleteAccountModalVisible(isVisible) {
+  const modal = document.getElementById("deleteAccountModal");
+  modal.hidden = !isVisible;
+  modal.classList.toggle("is-open", isVisible);
+  modal.setAttribute("aria-hidden", String(!isVisible));
+}
+
 function initializeDeleteAccountModal() {
   isDeletingAccount = false;
-  $("deleteAccountModal").hidden = true;
-  $("deleteAccountButton").disabled = false;
-  $("cancelDeleteAccountButton").disabled = false;
-  $("confirmDeleteAccountButton").disabled = false;
-  $("confirmDeleteAccountButton").textContent = "アカウントを削除";
+  setDeleteAccountModalVisible(false);
+  document.getElementById("deleteAccountButton").disabled = false;
+  document.getElementById("cancelDeleteAccountButton").disabled = false;
+  document.getElementById("confirmDeleteAccountButton").disabled = false;
+  document.getElementById("confirmDeleteAccountButton").textContent = "アカウントを削除";
 }
 
 function openDeleteAccountModal() {
   if (!cloudUser || isDeletingAccount) return;
-  $("deleteAccountModal").hidden = false;
-  $("cancelDeleteAccountButton").focus();
+  setDeleteAccountModalVisible(true);
+  requestAnimationFrame(() => document.getElementById("cancelDeleteAccountButton").focus());
 }
 
 function closeDeleteAccountModal() {
   if (isDeletingAccount) return;
-  $("deleteAccountModal").hidden = true;
+  setDeleteAccountModalVisible(false);
 }
 
 function setDeleteAccountBusy(isBusy) {
@@ -123,7 +130,7 @@ async function deleteCurrentAccount() {
     cloudUser = null;
     clearDeletedAccountData();
     updateAuthUi();
-    $("deleteAccountModal").hidden = true;
+    setDeleteAccountModalVisible(false);
     setCloudStatus("アカウントを削除し、この端末の記録を初期化しました。");
     setStatus("authStatus", "アカウントを削除しました。", "success");
   } catch (error) {
@@ -1233,9 +1240,17 @@ $("authPassword").addEventListener("keydown", (event) => {
   if (!cloudUser) $("signInButton").click();
 });
 
-$("deleteAccountButton").addEventListener("click", openDeleteAccountModal);
-$("cancelDeleteAccountButton").addEventListener("click", closeDeleteAccountModal);
-$("confirmDeleteAccountButton").addEventListener("click", deleteCurrentAccount);
+function addDeleteAccountTapHandler(id, handler) {
+  const button = document.getElementById(id);
+  button.addEventListener("click", handler);
+  button.addEventListener("pointerup", (event) => {
+    if (event.pointerType === "touch") handler();
+  });
+}
+
+addDeleteAccountTapHandler("deleteAccountButton", openDeleteAccountModal);
+addDeleteAccountTapHandler("cancelDeleteAccountButton", closeDeleteAccountModal);
+addDeleteAccountTapHandler("confirmDeleteAccountButton", deleteCurrentAccount);
 $("deleteAccountModal").addEventListener("click", (event) => {
   if (event.target === $("deleteAccountModal")) closeDeleteAccountModal();
 });

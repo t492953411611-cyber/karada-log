@@ -705,6 +705,10 @@ label textarea {
   background: #fff8f6;
 }
 
+.account-deletion[hidden] {
+  display: none !important;
+}
+
 .account-deletion h4 {
   color: var(--coral);
   font-size: 15px;
@@ -742,7 +746,13 @@ label textarea {
   position: fixed;
   inset: 0;
   z-index: 30;
+  display: none;
+  pointer-events: none;
+}
+
+.modal-backdrop.is-open {
   display: grid;
+  pointer-events: auto;
   place-items: center;
   padding: 20px;
   background: rgba(23, 33, 31, 0.48);
