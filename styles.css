@@ -733,6 +733,11 @@ label textarea {
   opacity: 0.65;
 }
 
+.modal-backdrop[hidden] {
+  display: none !important;
+  pointer-events: none;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

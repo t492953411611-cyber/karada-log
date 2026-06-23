@@ -46,6 +46,15 @@ function getAuthRedirectUrl() {
   return "https://t492953411611-cyber.github.io/karada-log/";
 }
 
+function initializeDeleteAccountModal() {
+  isDeletingAccount = false;
+  $("deleteAccountModal").hidden = true;
+  $("deleteAccountButton").disabled = false;
+  $("cancelDeleteAccountButton").disabled = false;
+  $("confirmDeleteAccountButton").disabled = false;
+  $("confirmDeleteAccountButton").textContent = "アカウントを削除";
+}
+
 function openDeleteAccountModal() {
   if (!cloudUser || isDeletingAccount) return;
   $("deleteAccountModal").hidden = false;
@@ -1242,6 +1251,7 @@ $("signOutButton").addEventListener("click", async () => {
   setStatus("authStatus", "ログアウトしました。");
 });
 
+initializeDeleteAccountModal();
 setupDefaults();
 renderAll();
 setupCloudAuth();
