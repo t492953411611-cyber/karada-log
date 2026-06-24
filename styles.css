@@ -834,6 +834,10 @@ label textarea {
     padding: calc(14px + env(safe-area-inset-top, 0px)) 14px 6px;
   }
 
+  html.is-native-app .app-header {
+    padding-top: max(64px, calc(14px + env(safe-area-inset-top, 0px)));
+  }
+
   .app-header h1 {
     font-size: 24px;
   }
